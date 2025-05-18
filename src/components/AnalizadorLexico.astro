@@ -1,0 +1,336 @@
+---
+---
+
+<div class="container">
+  <header>
+    <h1>Analizador Léxico</h1>
+    <p class="descripcion">Identifica y clasifica tokens según reglas específicas</p>
+  </header>
+
+  <section class="reglas">
+    <h2>Reglas de clasificación</h2>
+    <ul>
+      <li><strong>Identificador válido</strong>: Cadenas que contienen solo letras (ej. "juan", "Upchiapas")</li>
+      <li><strong>Número válido</strong>: Cadenas que contienen solo dígitos (ej. "9890")</li>
+      <li><strong>Error/No válido</strong>: Cadenas que mezclan letras y números (ej. "9890LUpchiapas")</li>
+    </ul>
+  </section>
+
+  <section class="formulario">
+    <h2>Ingresa tu texto</h2>
+    <form id="analizador-form">
+      <textarea 
+        id="texto-input" 
+        placeholder="Ingresa el texto a analizar (ej: juan 890 juan 9890LUpchiapas)"
+        rows="4"
+      ></textarea>
+      <button type="submit" id="analizar-btn">Analizar</button>
+    </form>
+  </section>
+
+  <section class="resultados" id="resultados-container" style="display: none;">
+    <h2>Resultados</h2>
+    
+    <div class="panel">
+      <h3>Tokens identificados</h3>
+      <div class="tabla-container">
+        <table id="tokens-table">
+          <thead>
+            <tr>
+              <th>Token</th>
+              <th>Tipo</th>
+            </tr>
+          </thead>
+          <tbody id="tokens-body">
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h3>Estadísticas</h3>
+      <div class="estadisticas" id="estadisticas-container">
+      </div>
+    </div>
+
+    <div class="panel">
+      <h3>Tokens únicos</h3>
+      <div class="tabla-container">
+        <table id="tokens-unicos-table">
+          <thead>
+            <tr>
+              <th>Token</th>
+              <th>Tipo</th>
+            </tr>
+          </thead>
+          <tbody id="tokens-unicos-body">
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+</div>
+
+<script>
+  document.getElementById('analizador-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    const texto = document.getElementById('texto-input').value.trim();
+    if (!texto) {
+      alert('Por favor, ingresa un texto para analizar');
+      return;
+    }
+    
+    try {
+      document.getElementById('analizar-btn').textContent = 'Analizando...';
+      document.getElementById('analizar-btn').disabled = true;
+      
+      const response = await fetch('http://localhost:8080/analyze', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ text: texto }),
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Error: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      mostrarResultados(data);
+    } catch (error) {
+      console.error('Error al analizar el texto:', error);
+      alert(`Error al conectar con el servidor: ${error.message}\nAsegúrate de que el servidor backend esté en ejecución en http://localhost:8080`);
+    } finally {
+      document.getElementById('analizar-btn').textContent = 'Analizar';
+      document.getElementById('analizar-btn').disabled = false;
+    }
+  });
+  
+  function mostrarResultados(data) {
+    document.getElementById('resultados-container').style.display = 'block';
+    
+    const tokensBody = document.getElementById('tokens-body');
+    tokensBody.innerHTML = '';
+    
+    data.tokens.forEach(token => {
+      const row = document.createElement('tr');
+      row.innerHTML = `
+        <td>${token.value}</td>
+        <td><span class="tipo-${token.type}">${token.type}</span></td>
+      `;
+      tokensBody.appendChild(row);
+    });
+    
+    const estadisticasContainer = document.getElementById('estadisticas-container');
+    estadisticasContainer.innerHTML = '';
+    
+    const totals = data.totalsByType;
+    const estadisticasItems = [
+      { label: 'Identificadores', value: totals.identificador || 0 },
+      { label: 'Identificadores únicos', value: totals.identificador_unicos || 0 },
+      { label: 'Números', value: totals.numero || 0 },
+      { label: 'Números únicos', value: totals.numero_unicos || 0 },
+      { label: 'Errores', value: totals.error || 0 }
+    ];
+    
+    estadisticasItems.forEach(item => {
+      const div = document.createElement('div');
+      div.className = 'estadistica-item';
+      div.innerHTML = `
+        <span class="estadistica-label">${item.label}:</span>
+        <span class="estadistica-valor">${item.value}</span>
+      `;
+      estadisticasContainer.appendChild(div);
+    });
+    
+    const tokensUnicosBody = document.getElementById('tokens-unicos-body');
+    tokensUnicosBody.innerHTML = '';
+    
+    Object.values(data.uniqueTokens).forEach(token => {
+      const row = document.createElement('tr');
+      row.innerHTML = `
+        <td>${token.value}</td>
+        <td><span class="tipo-${token.type}">${token.type}</span></td>
+      `;
+      tokensUnicosBody.appendChild(row);
+    });
+  }
+</script>
+
+<style>
+  .container {
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 2rem;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  }
+  
+  header {
+    text-align: center;
+    margin-bottom: 2rem;
+  }
+  
+  h1 {
+    font-size: 2.5rem;
+    color: #2563eb;
+    margin-bottom: 0.5rem;
+  }
+  
+  .descripcion {
+    font-size: 1.1rem;
+    color: #4b5563;
+  }
+  
+  .reglas {
+    background-color: #f3f4f6;
+    border-radius: 8px;
+    padding: 1.5rem;
+    margin-bottom: 2rem;
+  }
+  
+  .reglas h2 {
+    color: #1f2937;
+    margin-top: 0;
+    margin-bottom: 1rem;
+  }
+  
+  .reglas ul {
+    padding-left: 1.5rem;
+  }
+  
+  .reglas li {
+    margin-bottom: 0.5rem;
+  }
+  
+  .formulario {
+    margin-bottom: 2rem;
+  }
+  
+  textarea {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    font-size: 1rem;
+    margin-bottom: 1rem;
+    resize: vertical;
+  }
+  
+  button {
+    background-color: #2563eb;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    padding: 0.75rem 1.5rem;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: background-color 0.2s;
+  }
+  
+  button:hover {
+    background-color: #1d4ed8;
+  }
+  
+  button:disabled {
+    background-color: #93c5fd;
+    cursor: not-allowed;
+  }
+  
+  .resultados {
+    margin-top: 3rem;
+  }
+  
+  .panel {
+    background-color: white;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+  }
+  
+  .panel h3 {
+    margin-top: 0;
+    color: #1f2937;
+    margin-bottom: 1rem;
+  }
+  
+  .tabla-container {
+    overflow-x: auto;
+  }
+  
+  table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+  
+  th, td {
+    padding: 0.75rem;
+    text-align: left;
+    border-bottom: 1px solid #e5e7eb;
+  }
+  
+  th {
+    background-color: #f9fafb;
+    font-weight: 600;
+  }
+  
+  .tipo-identificador {
+    background-color: #dcfce7;
+    color: #166534;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.875rem;
+  }
+  
+  .tipo-numero {
+    background-color: #dbeafe;
+    color: #1e40af;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.875rem;
+  }
+  
+  .tipo-error {
+    background-color: #fee2e2;
+    color: #b91c1c;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.875rem;
+  }
+  
+  .estadisticas {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 1rem;
+  }
+  
+  .estadistica-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.75rem;
+    background-color: #f9fafb;
+    border-radius: 6px;
+  }
+  
+  .estadistica-label {
+    font-weight: 500;
+    color: #4b5563;
+  }
+  
+  .estadistica-valor {
+    font-weight: 600;
+    color: #2563eb;
+  }
+  
+  @media (max-width: 640px) {
+    .container {
+      padding: 1rem;
+    }
+    
+    .estadisticas {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>
