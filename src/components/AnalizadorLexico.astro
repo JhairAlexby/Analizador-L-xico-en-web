@@ -4,6 +4,7 @@
 <div class="container">
   <header>
     <h1>Analizador Léxico</h1>
+    <h2>Jhair Alejandro Cruz Palacios 223244</h2>
     <p class="descripcion">Identifica y clasifica tokens según reglas específicas</p>
   </header>
 
@@ -85,7 +86,7 @@
       document.getElementById('analizar-btn').textContent = 'Analizando...';
       document.getElementById('analizar-btn').disabled = true;
       
-      const response = await fetch('http://localhost:8080/analyze', {
+      const response = await fetch('https://web-production-9588.up.railway.app/analyze', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
